@@ -28,12 +28,7 @@ function loadShader(gl, vsh, fsh, callback) {
 	
 	gl.attachShader(shaderProgram, shader);
 
-	shaderProgram.vshLoad = true;
-	if(shaderProgram.fshLoad) {
-		callback(shaderProgram);
-	}
-
-	var shader = gl.createShader(gl.FRAGMENT_SHADER);
+	shader = gl.createShader(gl.FRAGMENT_SHADER);
 	gl.shaderSource(shader, $(fsh).text());
 	gl.compileShader(shader);
 	
@@ -42,10 +37,8 @@ function loadShader(gl, vsh, fsh, callback) {
 	}
 
 	gl.attachShader(shaderProgram, shader);
-	shaderProgram.fshLoad = true;
-	if(shaderProgram.vshLoad) {
-		callback(shaderProgram);
-	}
+
+	callback(shaderProgram);
 }
 
 function loadModel(gl, model, callback) {
