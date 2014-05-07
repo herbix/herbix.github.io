@@ -5,51 +5,6 @@
 	<script type="text/javascript" src="Oak3D_v_0_5_9.js"></script>
 	<script type="text/javascript" src="blockModel.js"></script>
 	<script type="text/javascript" src="gllib.js"></script>
-	<script id="drawv" type="text/vsh">
-attribute vec3 position;
-attribute vec3 normal;
-attribute vec2 textureCoord;
-
-uniform mat4 mvMatrix;
-uniform mat4 rtMatrix;
-uniform mat4 pMatrix;
-
-varying vec3 vNormal;
-varying vec2 vTextureCoord;
-
-void main(void) {
-	gl_Position = pMatrix * mvMatrix * rtMatrix * vec4(position, 1.0);
-	vNormal = normalize((rtMatrix * vec4(normal, 1.0)).xyz);
-	vTextureCoord = textureCoord;
-}
-
-
-	</script>
-	<script id="drawf" type="text/fsh">
-precision mediump float;
-
-uniform mat4 rtMatrix;
-
-uniform sampler2D texture;
-
-varying vec3 vNormal;
-varying vec2 vTextureCoord;
-
-void main(void) {
-	vec4 color = texture2D(texture, vTextureCoord.st);
-	vec3 normal = normalize(vNormal);
-	vec3 light = normalize(vec3(-1, 1.732, 1));
-	
-	float lightWeight = dot(normal, light);
-	if(lightWeight < 0.0)
-		lightWeight = 0.0;
-
-	lightWeight = 0.5 + 0.5 * lightWeight;
-
-	gl_FragColor = vec4(color.rgb * lightWeight, 1.0);
-}
-
-	</script>
 	<script type="text/javascript">
 		var gl;
 
@@ -164,6 +119,51 @@ void main(void) {
 	</script>
 </head>
 <body onload="try{load();}catch(e){alert(e.message);}">
+	<p id="drawv" style="display:none;">
+attribute vec3 position;
+attribute vec3 normal;
+attribute vec2 textureCoord;
+
+uniform mat4 mvMatrix;
+uniform mat4 rtMatrix;
+uniform mat4 pMatrix;
+
+varying vec3 vNormal;
+varying vec2 vTextureCoord;
+
+void main(void) {
+	gl_Position = pMatrix * mvMatrix * rtMatrix * vec4(position, 1.0);
+	vNormal = normalize((rtMatrix * vec4(normal, 1.0)).xyz);
+	vTextureCoord = textureCoord;
+}
+
+
+	</p>
+	<p id="drawf" style="display:none;">
+precision mediump float;
+
+uniform mat4 rtMatrix;
+
+uniform sampler2D texture;
+
+varying vec3 vNormal;
+varying vec2 vTextureCoord;
+
+void main(void) {
+	vec4 color = texture2D(texture, vTextureCoord.st);
+	vec3 normal = normalize(vNormal);
+	vec3 light = normalize(vec3(-1, 1.732, 1));
+	
+	float lightWeight = dot(normal, light);
+	if(lightWeight < 0.0)
+		lightWeight = 0.0;
+
+	lightWeight = 0.5 + 0.5 * lightWeight;
+
+	gl_FragColor = vec4(color.rgb * lightWeight, 1.0);
+}
+
+	</p>
 	<h1>Render minecraft blocks using WebGL.</h1>
 	<canvas id="canvas" width="512" height="512" style="border:1px solid ccc;"></canvas>
 	<p>All these textures' width and height must be power of 2 (e.g. 16, 32, 64, ...).</p>
