@@ -26,6 +26,10 @@
 				gl.dsp = sp;
 
 				gl.linkProgram(sp);
+				if (!gl.getProgramParameter(sp, gl.LINK_STATUS)) {
+					alert("Could not link shaders: \n" + gl.getProgramInfoLog(sp));
+					return;
+				}
 				
 				sp.position = gl.getAttribLocation(sp, "position");
 				sp.textureCoord = gl.getAttribLocation(sp, "textureCoord");
