@@ -22,6 +22,8 @@ function loadShader(gl, vsh, fsh, callback) {
 	gl.shaderSource(shader, $(vsh).text());
 	gl.compileShader(shader);
 	
+	alert($(vsh).text());
+	
 	if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
 		alert("vsh:" + gl.getShaderInfoLog(shader));
 	}
@@ -31,6 +33,8 @@ function loadShader(gl, vsh, fsh, callback) {
 	shader = gl.createShader(gl.FRAGMENT_SHADER);
 	gl.shaderSource(shader, $(fsh).text());
 	gl.compileShader(shader);
+	
+	alert($(fsh).text());
 	
 	if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
 		alert("fsh:" + gl.getShaderInfoLog(shader));
