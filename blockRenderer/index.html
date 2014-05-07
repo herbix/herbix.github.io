@@ -6,13 +6,6 @@
 	<script type="text/javascript" src="blockModel.js"></script>
 	<script type="text/javascript" src="gllib.js"></script>
 	<script type="text/javascript">
-		var navigatorName = "Microsoft Internet Explorer"; 
-		var isIE = false;
-		alert(navigator.appName);
-		if (navigator.appName == navigatorName) { 
-			isIE = true;
-		}
-
 		var gl;
 
 		function load() {
@@ -120,13 +113,13 @@
 		
 		function output() {
 			draw(gl.scene, gl);
-			if (!isIE) {
-				var result = $("#result").get(0);
-				result.href = $("#canvas").get(0).toDataURL("image/png");
-			} else {
-				$("#result-img").get(0).src = $("#canvas").get(0).toDataURL("image/png");
-				alert("Please right click the image (not the canvas) and choose 'save picture'.");
-			}
+			var result = $("#result").get(0);
+			result.href = $("#canvas").get(0).toDataURL("image/png");
+		}
+		
+		function outputImage() {
+			draw(gl.scene, gl);
+			$('#result-img').get(0).src = $('#canvas').get(0).toDataURL('image/png');
 		}
 	</script>
 </head>
@@ -180,8 +173,11 @@ void main(void) {
 	<p>Top Side:<input type="file" onchange="changeTexture(this, 0);" /></p>
 	<p>Left Side:<input type="file" onchange="changeTexture(this, 2);" /></p>
 	<p>Right Side:<input type="file" onchange="changeTexture(this, 1);" /></p>
-	<a id="result" download="result.png" onclick="output()" href="javascript:;" target="__blank" type="application/octet-stream" >Save result</a>
-	<img id="result-img" />
+	<p>
+		<a id="result" download="result.png" onclick="output()" href="javascript:;" target="__blank" type="application/octet-stream" >Save Result</a>
+		<a href="javascript:;" onclick="outputImage()" >Render to Image Below(For IE11)</a>
+	</p>
+	<p><img id="result-img" /></p>
 	<hr />
 	<p>Author: Chaos</p>
 	<p>E-Mail: <a href="mailto:herbix@163.com">herbix@163.com</a></p>
