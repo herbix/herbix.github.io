@@ -11,18 +11,14 @@
 		function load() {
 			gl = loadGl('canvas');
 
-			// 深度测试
 			gl.enable(gl.DEPTH_TEST);
 			gl.depthFunc(gl.LESS);
 			
-			//* 混合模式
 			gl.enable(gl.BLEND);
 			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-			//*/
-			//* 单面，逆时针为正面
+
 			gl.enable(gl.CULL_FACE);
 			gl.cullFace(gl.BACK);
-			//*/
 			
 			var done = 0;
 
