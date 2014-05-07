@@ -1,0 +1,176 @@
+<html>
+<head>
+	<title>Minecraft Block Renderer</title>
+	<script type="text/javascript" src="jquery-1.10.2.min.js"></script>
+	<script type="text/javascript" src="Oak3D_v_0_5_9.js"></script>
+	<script type="text/javascript" src="blockModel.js"></script>
+	<script type="text/javascript" src="gllib.js"></script>
+	<script id="drawv" type="text/vsh">
+attribute vec3 position;
+attribute vec3 normal;
+attribute vec2 textureCoord;
+
+uniform mat4 mvMatrix;
+uniform mat4 rtMatrix;
+uniform mat4 pMatrix;
+
+varying vec3 vNormal;
+varying vec2 vTextureCoord;
+
+void main(void) {
+	gl_Position = pMatrix * mvMatrix * rtMatrix * vec4(position, 1.0);
+	vNormal = normalize((rtMatrix * vec4(normal, 1.0)).xyz);
+	vTextureCoord = textureCoord;
+}
+
+
+	</script>
+	<script id="drawf" type="text/fsh">
+precision mediump float;
+
+uniform mat4 rtMatrix;
+
+uniform sampler2D texture;
+
+varying vec3 vNormal;
+varying vec2 vTextureCoord;
+
+void main(void) {
+	vec4 color = texture2D(texture, vTextureCoord.st);
+	vec3 normal = normalize(vNormal);
+	vec3 light = normalize(vec3(-1, 1.732, 1));
+	
+	float lightWeight = dot(normal, light);
+	if(lightWeight < 0.0)
+		lightWeight = 0.0;
+
+	lightWeight = 0.5 + 0.5 * lightWeight;
+
+	gl_FragColor = vec4(color.rgb * lightWeight, 1.0);
+}
+
+	</script>
+	<script type="text/javascript">
+		var gl;
+
+		function load() {
+			gl = loadGl('canvas');
+
+			// 深度测试
+			gl.enable(gl.DEPTH_TEST);
+			gl.depthFunc(gl.LESS);
+			
+			//* 混合模式
+			gl.enable(gl.BLEND);
+			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+			//*/
+			//* 单面，逆时针为正面
+			gl.enable(gl.CULL_FACE);
+			gl.cullFace(gl.BACK);
+			//*/
+			
+			var done = 0;
+
+			loadShader(gl, "#drawv", "#drawf", function(sp) {
+				gl.dsp = sp;
+				
+				gl.linkProgram(sp);
+				
+				sp.position = gl.getAttribLocation(sp, "position");
+				sp.textureCoord = gl.getAttribLocation(sp, "textureCoord");
+				sp.normal = gl.getAttribLocation(sp, "normal");
+				
+				sp.mvMatrix = gl.getUniformLocation(sp, "mvMatrix");
+				sp.rtMatrix = gl.getUniformLocation(sp, "rtMatrix");
+				sp.pMatrix = gl.getUniformLocation(sp, "pMatrix");
+				sp.texture = gl.getUniformLocation(sp, "texture");
+				
+				done |= 1;
+				doneThen(done, 3, gl);
+			});
+			
+			loadModel(gl, block, function(lm) {
+				gl.model = lm;
+			
+				done |= 2;
+				doneThen(done, 3, gl);
+			});
+		}
+		
+		
+		function doneThen(done, max, gl) {
+			if(done != max)
+				return;
+			
+			var scene = {};
+			
+			scene.mvMat = okMat4Trans(0, -8*1.732/2, 0).toArray();
+			scene.rtMat = okMat4RotY(45).rotX(OAK.SPACE_WORLD, 30).toArray();
+			scene.pMat = okMat4Ortho(-13, 13, 13, -13, -20, 20).toArray();
+			
+			gl.scene = scene;
+
+			draw(scene, gl);
+		}
+		
+		function draw(scene, gl) {
+			var sp2 = gl.dsp;
+			gl.useProgram(sp2);
+
+			drawModel(gl, gl.model, {
+				position: sp2.position,
+				normal: sp2.normal,
+				textureCoord: sp2.textureCoord,
+				texture: sp2.texture,
+				otherActions: function(gl, texture, polyhedron) {
+					var sp = gl.dsp;
+					
+					gl.uniformMatrix4fv(sp.pMatrix, false, scene.pMat);
+					gl.uniformMatrix4fv(sp.rtMatrix, false, scene.rtMat);
+					gl.uniformMatrix4fv(sp.mvMatrix, false, scene.mvMat);
+				}
+			});
+		}
+		
+		function changeTexture(o, i) {
+			if(o.files.length < 0) {
+				return;
+			}
+			
+			var file = o.files[0];
+			
+			var reader = new FileReader(); 
+			
+			reader.onloadend = function() {
+				if (reader.error) {
+					alert("Error reading file.");
+				} else {
+					var s = reader.result;
+					loadTexture(gl, {image:s, type:"solid", minFilter:"nearest", magFilter:"nearest"}, function(tx) {
+						gl.model.textures[i] = tx;
+						draw(gl.scene, gl);
+					});
+				}
+			}
+
+			reader.readAsDataURL(file);
+		}
+		
+		function output() {
+			draw(gl.scene, gl);
+			var result = $("#result").get(0);
+			result.href = $("#canvas").get(0).toDataURL("image/png");
+		}
+	</script>
+</head>
+<body onload="try{load();}catch(e){alert(e.message);}">
+	<canvas id="canvas" width="512" height="512" style="border:1px solid ccc;"></canvas>
+	<p>Top Side:<input type="file" onchange="changeTexture(this, 0);" /></p>
+	<p>Left Side:<input type="file" onchange="changeTexture(this, 2);" /></p>
+	<p>Right Side:<input type="file" onchange="changeTexture(this, 1);" /></p>
+	<a id="result" download="result.png" onclick="output()" href="javascript:;" target="__blank" type="application/octet-stream" >Save result</a>
+	<hr />
+	<p>Author: Chaos</p>
+	<p>E-Mail: <a href="mailto:herbix@163.com">herbix@163.com</a></p>
+</body>
+</html>
