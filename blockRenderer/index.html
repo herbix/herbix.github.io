@@ -277,8 +277,8 @@
 			});
 		}
 		
-		function changeTexture3(i) {
-			gl.model.textures[i] = gl.model.textures[0];
+		function changeTexture3(i, f) {
+			gl.model.textures[i] = gl.model.textures[f];
 			draw(gl.scene, gl);
 		}
 		
@@ -347,18 +347,21 @@ void main(void) {
 		<td><select class="presets" onchange="changeTexture2(this, 0);"></select></td>
 		<td><input type="file" onchange="changeTexture(this, 0);" /></td>
 		<td>&nbsp;</td>
+		<td>&nbsp;</td>
 	</tr>
 	<tr>
 		<td>Left Side:</td>
 		<td><select class="presets" onchange="changeTexture2(this, 2);"></select></td>
 		<td><input type="file" onchange="changeTexture(this, 2);" /></td>
-		<td><a href="javascript:;" onclick="changeTexture3(2);" >Same as Top</a></td>
+		<td><a href="javascript:;" onclick="changeTexture3(2, 0);" >Same as Top</a></td>
+		<td>&nbsp;</td>
 	</tr>
 	<tr>
 		<td>Right Side:</td>
 		<td><select class="presets" onchange="changeTexture2(this, 1);" ></select></td>
 		<td><input type="file" onchange="changeTexture(this, 1);" /></td>
-		<td><a href="javascript:;" onclick="changeTexture3(1);" >Same as Top</a></td>
+		<td><a href="javascript:;" onclick="changeTexture3(1, 0);" >Same as Top</a></td>
+		<td><a href="javascript:;" onclick="changeTexture3(1, 2);" >Same as Left</a></td>
 	</tr>
 	</table>
 	<p>
