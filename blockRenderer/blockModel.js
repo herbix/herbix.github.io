@@ -1,25 +1,25 @@
 var block = {
 	"textures" : [
 		{
-			"image" : "top.png",
+			"image" : "presets/bedrock.png",
 			"type" : "solid",
 			"minFilter" : "nearest",
 			"magFilter" : "nearest"
 		},
 		{
-			"image" : "front.png",
+			"image" : "presets/bedrock.png",
 			"type" : "solid",
 			"minFilter" : "nearest",
 			"magFilter" : "nearest"
 		},
 		{
-			"image" : "side.png",
+			"image" : "presets/bedrock.png",
 			"type" : "solid",
 			"minFilter" : "nearest",
 			"magFilter" : "nearest"
 		},
 		{
-			"image" : "bottom.png",
+			"image" : "presets/bedrock.png",
 			"type" : "solid",
 			"minFilter" : "nearest",
 			"magFilter" : "nearest"
