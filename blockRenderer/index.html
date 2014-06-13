@@ -2,15 +2,60 @@
 <head>
 	<title>Minecraft Block Renderer</title>
 	<link rel="shortcut icon" href="/favicon.ico" />
+	<script type="text/vsh" id="drawv">
+		attribute vec3 position;
+		attribute vec3 normal;
+		attribute vec2 textureCoord;
+
+		uniform mat4 mvMatrix;
+		uniform mat4 rtMatrix;
+		uniform mat4 pMatrix;
+
+		varying vec3 vNormal;
+		varying vec2 vTextureCoord;
+
+		void main(void) {
+			gl_Position = pMatrix * mvMatrix * rtMatrix * vec4(position, 1.0);
+			vNormal = normalize((rtMatrix * vec4(normal, 1.0)).xyz);
+			vTextureCoord = textureCoord;
+		}
+	</script>
+	<script type="text/fsh" id="drawf">
+		precision mediump float;
+
+		uniform sampler2D texture;
+		uniform vec3 backColor;
+
+		varying vec3 vNormal;
+		varying vec2 vTextureCoord;
+
+		void main(void) {
+			vec4 color = texture2D(texture, vTextureCoord.st);
+			vec3 normal = normalize(vNormal);
+			vec3 light = normalize(vec3(-1, 1.732, 1));
+			
+			float lightWeight = dot(normal, light);
+			if(lightWeight < 0.0)
+				lightWeight = 0.0;
+
+			lightWeight = 0.5 + 0.5 * lightWeight;
+
+			gl_FragColor = vec4(backColor * color.rgb * lightWeight, color.a);
+		}
+	</script>
 	<script type="text/javascript" src="jquery-1.10.2.min.js"></script>
+	<script type="text/javascript" src="jquery.cookie.js"></script>
 	<script type="text/javascript" src="Oak3D_v_0_5_9.js"></script>
 	<script type="text/javascript" src="blockModel.js"></script>
 	<script type="text/javascript" src="gllib.js"></script>
+	<script type="text/javascript" src="presets.js"></script>
 	<script type="text/javascript">
 		var gl;
 
 		function load() {
 			loadPresets();
+			loadModels();
+			loadSaved();
 
 			gl = loadGl('canvas');
 
@@ -22,6 +67,14 @@
 
 			gl.enable(gl.CULL_FACE);
 			gl.cullFace(gl.BACK);
+			
+			gl.backColor = {};
+			var colorstr = $.cookie("colorstr");
+			if(colorstr == undefined) {
+				colorstr = "FFFFFF";
+			}
+			$("#color-input").val(colorstr);
+			changeColor(colorstr);
 			
 			var done = 0;
 
@@ -42,20 +95,27 @@
 				sp.rtMatrix = gl.getUniformLocation(sp, "rtMatrix");
 				sp.pMatrix = gl.getUniformLocation(sp, "pMatrix");
 				sp.texture = gl.getUniformLocation(sp, "texture");
+				sp.backColor = gl.getUniformLocation(sp, "backColor");
 				
 				done |= 1;
 				doneThen(done, 3, gl);
 			});
 			
-			loadModel(gl, block, function(lm) {
+			var themodel = models[$(".models").val()];
+			if(!themodel) {
+				themodel = models.cube;
+			}
+			themodel.textures = defaultTextures;
+			
+			loadModel(gl, themodel, function(lm) {
 				gl.model = lm;
+				themodel.textures = [];
 			
 				done |= 2;
 				doneThen(done, 3, gl);
 			});
 
 		}
-		
 		
 		function doneThen(done, max, gl) {
 			if(done != max)
@@ -83,7 +143,7 @@
 				texture: sp2.texture,
 				otherActions: function(gl, texture, polyhedron) {
 					var sp = gl.dsp;
-					
+					gl.uniform3f(sp.backColor, gl.backColor.r, gl.backColor.g, gl.backColor.b);
 					gl.uniformMatrix4fv(sp.pMatrix, false, scene.pMat);
 					gl.uniformMatrix4fv(sp.rtMatrix, false, scene.rtMat);
 					gl.uniformMatrix4fv(sp.mvMatrix, false, scene.mvMat);
@@ -92,169 +152,59 @@
 		}
 		
 		function loadPresets() {
-			var list = [
-				"bedrock",
-				"bookshelf",
-				"brick",
-				"clay",
-				"coal_block",
-				"coal_ore",
-				"cobblestone",
-				"cobblestone_mossy",
-				"command_block",
-				"crafting_table_front",
-				"crafting_table_side",
-				"crafting_table_top",
-				"diamond_block",
-				"diamond_ore",
-				"dirt",
-				"dispenser_front_horizontal",
-				"dispenser_front_vertical",
-				"dropper_front_horizontal",
-				"dropper_front_vertical",
-				"emerald_block",
-				"emerald_ore",
-				"end_stone",
-				"farmland_dry",
-				"farmland_wet",
-				"furnace_front_off",
-				"furnace_front_on",
-				"furnace_side",
-				"furnace_top",
-				"glowstone",
-				"gold_block",
-				"gold_ore",
-				"grass_side",
-				"grass_side_snowed",
-				"grass_top",
-				"gravel",
-				"hardened_clay",
-				"hardened_clay_stained_black",
-				"hardened_clay_stained_blue",
-				"hardened_clay_stained_brown",
-				"hardened_clay_stained_cyan",
-				"hardened_clay_stained_gray",
-				"hardened_clay_stained_green",
-				"hardened_clay_stained_light_blue",
-				"hardened_clay_stained_lime",
-				"hardened_clay_stained_magenta",
-				"hardened_clay_stained_orange",
-				"hardened_clay_stained_pink",
-				"hardened_clay_stained_purple",
-				"hardened_clay_stained_red",
-				"hardened_clay_stained_silver",
-				"hardened_clay_stained_white",
-				"hardened_clay_stained_yellow",
-				"hay_block_side",
-				"hay_block_top",
-				"ice",
-				"iron_block",
-				"iron_ore",
-				"jukebox_side",
-				"jukebox_top",
-				"lapis_block",
-				"lapis_ore",
-				"log_acacia",
-				"log_acacia_top",
-				"log_big_oak",
-				"log_big_oak_top",
-				"log_birch",
-				"log_birch_top",
-				"log_jungle",
-				"log_jungle_top",
-				"log_oak",
-				"log_oak_top",
-				"log_spruce",
-				"log_spruce_top",
-				"melon_side",
-				"melon_top",
-				"mushroom_block_inside",
-				"mushroom_block_skin_brown",
-				"mushroom_block_skin_red",
-				"mushroom_block_skin_stem",
-				"mycelium_side",
-				"mycelium_top",
-				"netherrack",
-				"nether_brick",
-				"noteblock",
-				"obsidian",
-				"piston_bottom",
-				"piston_inner",
-				"piston_side",
-				"piston_top_normal",
-				"piston_top_sticky",
-				"planks_birch",
-				"planks_jungle",
-				"planks_oak",
-				"planks_spruce",
-				"pumpkin_face_off",
-				"pumpkin_face_on",
-				"pumpkin_side",
-				"pumpkin_top",
-				"quartz_block_bottom",
-				"quartz_block_chiseled",
-				"quartz_block_chiseled_top",
-				"quartz_block_lines",
-				"quartz_block_lines_top",
-				"quartz_block_side",
-				"quartz_block_top",
-				"quartz_ore",
-				"redstone_block",
-				"redstone_lamp_off",
-				"redstone_lamp_on",
-				"redstone_ore",
-				"sand",
-				"sandstone_bottom",
-				"sandstone_carved",
-				"sandstone_normal",
-				"sandstone_smooth",
-				"sandstone_top",
-				"snow",
-				"soul_sand",
-				"sponge",
-				"stone",
-				"stonebrick",
-				"stonebrick_carved",
-				"stonebrick_cracked",
-				"stonebrick_mossy",
-				"stone_slab_side",
-				"stone_slab_top",
-				"tnt_bottom",
-				"tnt_side",
-				"tnt_top",
-				"wool_colored_black",
-				"wool_colored_blue",
-				"wool_colored_brown",
-				"wool_colored_cyan",
-				"wool_colored_gray",
-				"wool_colored_green",
-				"wool_colored_light_blue",
-				"wool_colored_lime",
-				"wool_colored_magenta",
-				"wool_colored_orange",
-				"wool_colored_pink",
-				"wool_colored_purple",
-				"wool_colored_red",
-				"wool_colored_silver",
-				"wool_colored_white",
-				"wool_colored_yellow"
-			];
 			var optstr = "";
-			
-			for(var i=0; i<list.length; i++) {
-				optstr += "<option value='" + list[i] + "'>" + list[i] + "</option>";
+			for(var i=0; i<presets.length; i++) {
+				optstr += "<option value='" + presets[i] + "'" + (presets[i] == "bedrock" ? "selected='true'" : "") + ">" + presets[i] + "</option>";
 			}
-			
 			$(".presets").html(optstr);
 		}
 		
-		function changeTexture(o, i) {
+		function loadModels() {
+			var optstr = "";
+			for(var k in models) {
+				optstr += "<option value='" + k + "'>" + k + "</option>";
+			}
+			$(".models").html(optstr);
+		}
+		
+		function loadSaved() {
+			if($.cookie("resultsize"))
+				$("#size").val($.cookie("resultsize"));
+			if($.cookie("selectedmodel"))
+				$(".models").val($.cookie("selectedmodel"));
+		}
+		
+		function changeModel(modelname) {
+			$.cookie("selectedmodel", modelname);
+			loadModel(gl, models[modelname], function(lm) {
+				lm.textures = gl.model.textures;
+				gl.model = lm;
+				draw(gl.scene, gl);
+			});
+		}
+		
+		function changeColor(colorstr, repaint) {
+			$.cookie("colorstr", colorstr);
+			if(colorstr.length == 3) {
+				gl.backColor.r = parseInt(colorstr[0], 16) / 15;
+				gl.backColor.g = parseInt(colorstr[1], 16) / 15;
+				gl.backColor.b = parseInt(colorstr[2], 16) / 15;
+			} else if(colorstr.length == 6) {
+				gl.backColor.r = parseInt(colorstr.substring(0, 2), 16) / 255;
+				gl.backColor.g = parseInt(colorstr.substring(2, 4), 16) / 255;
+				gl.backColor.b = parseInt(colorstr.substring(4, 6), 16) / 255;
+			}
+			if(repaint) {
+				draw(gl.scene, gl);
+			}
+		}
+		
+		function changeTextureFromFile(o, i) {
 			if(o.files.length < 0) {
 				return;
 			}
 			
 			var file = o.files[0];
-			
 			var reader = new FileReader(); 
 			
 			reader.onloadend = function() {
@@ -272,7 +222,7 @@
 			reader.readAsDataURL(file);
 		}
 		
-		function changeTexture2(o, i) {
+		function changeTextureFromPresets(o, i) {
 			var s = "presets/" + $(o).val() + ".png";
 			loadTexture(gl, {image:s, type:"solid", minFilter:"nearest", magFilter:"nearest"}, function(tx) {
 				gl.model.textures[i] = tx;
@@ -280,67 +230,34 @@
 			});
 		}
 		
-		function changeTexture3(i, f) {
+		function changeTextureFromOther(i, f) {
 			gl.model.textures[i] = gl.model.textures[f];
 			draw(gl.scene, gl);
 		}
 		
-		function output() {
+		function getCanvasData() {
+			var canvas = $("#canvas");
+			var size = $("#size").val();
+			canvas.attr("width", size);
+			canvas.attr("height", size);
 			draw(gl.scene, gl);
-			var result = $("#result").get(0);
-			result.href = $("#canvas").get(0).toDataURL("image/png");
+			var result = canvas.get(0).toDataURL("image/png");
+			canvas.attr("width", "512");
+			canvas.attr("height", "512");
+			draw(gl.scene, gl);
+			return result;
+		}
+		
+		function output() {
+			$("#result").get(0).href = getCanvasData();
 		}
 		
 		function outputImage() {
-			draw(gl.scene, gl);
-			$('#result-img').get(0).src = $('#canvas').get(0).toDataURL('image/png');
+			$('#result-img').get(0).src = getCanvasData();
 		}
 	</script>
 </head>
-<body onload="try{load();}catch(e){alert(e.message);}">
-	<p id="drawv" style="display:none;">
-attribute vec3 position;
-attribute vec3 normal;
-attribute vec2 textureCoord;
-
-uniform mat4 mvMatrix;
-uniform mat4 rtMatrix;
-uniform mat4 pMatrix;
-
-varying vec3 vNormal;
-varying vec2 vTextureCoord;
-
-void main(void) {
-	gl_Position = pMatrix * mvMatrix * rtMatrix * vec4(position, 1.0);
-	vNormal = normalize((rtMatrix * vec4(normal, 1.0)).xyz);
-	vTextureCoord = textureCoord;
-}
-
-
-	</p>
-	<p id="drawf" style="display:none;">
-precision mediump float;
-
-uniform sampler2D texture;
-
-varying vec3 vNormal;
-varying vec2 vTextureCoord;
-
-void main(void) {
-	vec4 color = texture2D(texture, vTextureCoord.st);
-	vec3 normal = normalize(vNormal);
-	vec3 light = normalize(vec3(-1, 1.732, 1));
-	
-	float lightWeight = dot(normal, light);
-	if(lightWeight < 0.0)
-		lightWeight = 0.0;
-
-	lightWeight = 0.5 + 0.5 * lightWeight;
-
-	gl_FragColor = vec4(color.rgb * lightWeight, 1.0);
-}
-
-	</p>
+<body>
 	<h1>Render minecraft blocks using WebGL.</h1>
 	<canvas id="canvas" width="512" height="512" style="border:1px solid ccc;">
 		Your browser doesn't support WelGL, or you need to enable it.
@@ -348,28 +265,53 @@ void main(void) {
 	<p>All these textures' width and height must be power of 2 (e.g. 16, 32, 64, ...).</p>
 	<table>
 	<tr>
+		<td>Model:</td>
+		<td><select class="models" onchange="changeModel($(this).val())"></select></td>
+		<td>&nbsp;</td>
+		<td>&nbsp;</td>
+		<td>&nbsp;</td>
+	</tr>
+	<tr>
+		<td>Color:</td>
+		<td>
+			<input type="input" id="color-input" value="FFFFFF" onkeyup="$(this).parent().children('span').css('background','#'+$(this).val())"/>
+			<span style="display:block;float:left;width:20px;border:1px solid black;margin-top:3px">&nbsp;</span>
+		</td>
+		<td><a href="javascript:;" onclick="changeColor($('#color-input').val(),true)">Change Color</a></td>
+		<td>&nbsp;</td>
+		<td>&nbsp;</td>
+	</tr>
+	<tr>
 		<td>Top Side:</td>
-		<td><select class="presets" onchange="changeTexture2(this, 0);"></select></td>
-		<td><input type="file" onchange="changeTexture(this, 0);" /></td>
+		<td><select class="presets" onchange="changeTextureFromPresets(this, 0);"></select></td>
+		<td><input type="file" onchange="changeTextureFromFile(this, 0);" /></td>
 		<td>&nbsp;</td>
 		<td>&nbsp;</td>
 	</tr>
 	<tr>
 		<td>Left Side:</td>
-		<td><select class="presets" onchange="changeTexture2(this, 2);"></select></td>
-		<td><input type="file" onchange="changeTexture(this, 2);" /></td>
-		<td><a href="javascript:;" onclick="changeTexture3(2, 0);" >Same as Top</a></td>
+		<td><select class="presets" onchange="changeTextureFromPresets(this, 1);"></select></td>
+		<td><input type="file" onchange="changeTextureFromFile(this, 1);" /></td>
+		<td><a href="javascript:;" onclick="changeTextureFromOther(1, 0);" >Same as Top</a></td>
 		<td>&nbsp;</td>
 	</tr>
 	<tr>
 		<td>Right Side:</td>
-		<td><select class="presets" onchange="changeTexture2(this, 1);" ></select></td>
-		<td><input type="file" onchange="changeTexture(this, 1);" /></td>
-		<td><a href="javascript:;" onclick="changeTexture3(1, 0);" >Same as Top</a></td>
-		<td><a href="javascript:;" onclick="changeTexture3(1, 2);" >Same as Left</a></td>
+		<td><select class="presets" onchange="changeTextureFromPresets(this, 2);" ></select></td>
+		<td><input type="file" onchange="changeTextureFromFile(this, 2);" /></td>
+		<td><a href="javascript:;" onclick="changeTextureFromOther(2, 0);" >Same as Top</a></td>
+		<td><a href="javascript:;" onclick="changeTextureFromOther(2, 1);" >Same as Left</a></td>
 	</tr>
 	</table>
 	<p>
+		Size: 
+		<select id="size" onchange="$.cookie('resultsize', $('#size').val())">
+			<option value="512" selected="true">512</option>
+			<option value="256">256</option>
+			<option value="128">128</option>
+			<option value="64">64</option>
+			<option value="32">32</option>
+		</select>
 		<a id="result" download="result.png" onclick="output()" href="javascript:;" target="__blank" type="application/octet-stream" >Save Result</a>
 		<a href="javascript:;" onclick="outputImage()" >Render to Image Below(For IE11)</a>
 	</p>
@@ -377,6 +319,9 @@ void main(void) {
 	<hr />
 	<p>Author: Chaos</p>
 	<p>E-Mail: <a href="mailto:herbix@163.com">herbix@163.com</a></p>
+	<script type="text/javascript">
+		try{load();}catch(e){alert(e.message);}
+	</script>
 	<script type="text/javascript">var cnzz_protocol = (("https:" == document.location.protocol) ? " https://" : " http://");document.write(unescape("%3Cspan id='cnzz_stat_icon_1000435278'%3E%3C/span%3E%3Cscript src='" + cnzz_protocol + "v1.cnzz.com/z_stat.php%3Fid%3D1000435278%26show%3Dpic' type='text/javascript'%3E%3C/script%3E"));</script>
 </body>
 </html>

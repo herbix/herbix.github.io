@@ -67,6 +67,10 @@ function loadModel(gl, model, callback) {
 			});
 		})(i);
 	}
+	
+	if(textureLoaded == 0) {
+		callback(loadedModel);
+	}
 }
 
 function loadPolyhedron(gl, polyhedron, callback) {
