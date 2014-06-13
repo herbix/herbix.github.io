@@ -74,6 +74,7 @@
 				colorstr = "FFFFFF";
 			}
 			$("#color-input").val(colorstr);
+			$("#color-input").parent().children('span').css('background','#'+colorstr);
 			changeColor(colorstr);
 			
 			var done = 0;
