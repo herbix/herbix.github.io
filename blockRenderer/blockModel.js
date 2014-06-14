@@ -35,7 +35,7 @@ Model.prototype = {
 	constructor : Model,
 	toString : function() {
 		return "[object Model]";
-	},
+	}
 };
 
 Model.prototype.addCube = function(xmin, ymin, zmin, xmax, ymax, zmax) {
