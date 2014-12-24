@@ -440,7 +440,13 @@ function rotateController(id) {
 	return rot;
 }
 
+var isSolving = false;
+
 function solve(func) {
+	if(isSolving) {
+		return;
+	}
+	isSolving = true;
 //			rubik.random_generate();
 	var state = rubik.save_state();
 	var result = func();
@@ -456,10 +462,19 @@ function solve(func) {
 		if(item[1] == rubik.COUNTER_CLOCK_90) {
 			id++;
 		}
-		addAnimation(id);
-		if(item[1] == rubik.CLOCK_180) {
+		if(i == result.length-1 && item[1] != rubik.CLOCK_180) {
+			addAnimation(id, function() {
+				isSolving = false;
+			});
+		} else {
 			addAnimation(id);
 		}
+		if(item[1] == rubik.CLOCK_180) {
+			addAnimation(id, i==result.length-1?function(){isSolving=false;}:false);
+		}
+	}
+	if(result.length == 0) {
+		isSolving = false;
 	}
 }
 
@@ -489,7 +504,16 @@ var directions = [
 	rubik.CLOCK_90, rubik.COUNTER_CLOCK_90
 ];
 
-function addAnimation(i) {
-	gl.scene.addAnimation(i,function(){rubik.operate(operates[i], directions[i])});
+function addAnimation(i, extra) {
+	if(extra) {
+		gl.scene.addAnimation(i,function(){
+			rubik.operate(operates[i], directions[i]);
+			extra();
+		});
+	} else {
+		gl.scene.addAnimation(i,function(){
+			rubik.operate(operates[i], directions[i]);
+		});
+	}
 }
 
