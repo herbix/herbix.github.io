@@ -22,7 +22,7 @@ var position_rule = [[[0, 2, 6, 3, 4, 1, 5, 7],[0, 6, 5, 3, 4, 2, 1, 7],[0, 5, 1
 						[[3, 0, 1, 2, 4, 5, 6, 7],[2, 3, 0, 1, 4, 5, 6, 7],[1, 2, 3, 0, 4, 5, 6, 7]],
 						[[0, 1, 3, 7, 4, 5, 2, 6],[0, 1, 7, 6, 4, 5, 3, 2],[0, 1, 6, 2, 4, 5, 7, 3]],
 						[[1, 5, 2, 3, 0, 4, 6, 7],[5, 4, 2, 3, 1, 0, 6, 7],[4, 0, 2, 3, 5, 1, 6, 7]],
-						[[0, 1, 2, 3, 5, 6, 7, 4],[0, 1, 2, 3, 6, 7, 4, 5],[0, 1, 2, 3, 7, 6, 5, 4]],
+						[[0, 1, 2, 3, 5, 6, 7, 4],[0, 1, 2, 3, 6, 7, 4, 5],[0, 1, 2, 3, 7, 4, 5, 6]],
 						[[4, 1, 2, 0, 7, 5, 6, 3],[7, 1, 2, 4, 3, 5, 6, 0],[3, 1, 2, 7, 0, 5, 6, 4]],
 						[[3, 2, 6, 7, 0, 1, 5, 4],[7, 6, 5, 4, 3, 2, 1, 0],[4, 5, 1, 0, 7, 6, 2, 3]],
 						[[3, 0, 1, 2, 7, 4, 5, 6],[2, 3, 0, 1, 6, 7, 4, 5],[1, 2, 3, 0, 5, 6, 7, 4]],
@@ -44,15 +44,24 @@ var rotation_offset = [[1, 2, 1, 2], [0, 0, 0, 0], [1, 2, 1, 2],
 var cubes = [[YELLOW, ORANGE, GREEN],[YELLOW, GREEN, RED],[YELLOW, RED, BLUE],[YELLOW, BLUE, ORANGE],
 				[WHITE, GREEN, ORANGE],[WHITE, RED, GREEN],[WHITE, BLUE, RED],[WHITE, ORANGE, BLUE]];
 
-var position = [0, 0, 0, 0, 0, 0, 0, 0];
+var position = [0, 1, 2, 3, 4, 5, 6, 7];
 var rotation = [0, 0, 0, 0, 0, 0, 0, 0];
 
+var goal_position=[0,1,2,3,4,5,6,7];
+var goal_rotation=[0,0,0,0,0,0,0,0];
 function random_generate(){
 	var flag = [0, 0, 0, 0, 0, 0, 0, 0];
-
+	/*operate(4,0);
+	operate(2,1);
+	operate(1,2);
+	operate(3,2);
+	operate(5,0);
+	operate(4,1);
+	operate(6,0);*/
 	// Generate random position
 	for(var i = 0; i < 8; i++){
 		position[i] = Math.round(Math.random() * 8) % 8;
+		//position[i] =(i+1)%8;
 		while(flag[position[i]] != 0)
 			position[i] = (position[i] + 1) % 8;
 		flag[position[i]] = 1;
@@ -62,6 +71,7 @@ function random_generate(){
 	var rot_sum = 0;
 	for(var i = 0; i < 7; i++){
 		rotation[i] = Math.round(Math.random() * 3) % 3;
+		//rotation[i]=0;
 		rot_sum = (rot_sum + rotation[i]) % 3;
 	}
 	rotation[7] = (3 - rot_sum) % 3;
@@ -88,7 +98,18 @@ function operate(face, rotate){
 		position[i] = temp_result[i];
 	}
 }
-
+function operate_state(face,rotate,state){
+	for(var i = 0; i < 8; i++){
+		state[1][state[0][i]] = (state[1][state[0][i]] + rotation_rule[face][rotate][i]) % 3;
+	}
+	var temp_result=[0,0,0,0,0,0,0,0];
+	for(var i = 0; i < 8; i++){
+		temp_result[i] = state[0][position_rule[face][rotate][i]];
+	}
+	for(var i = 0; i < 8; i++){
+		state[0][i] = temp_result[i];
+	}
+}
 function cancel(face, rotate){
 	rotate = 2 - rotate;
 	operate(face, rotate);
@@ -424,6 +445,232 @@ function load_state(o){
 	rotation = o.rotation;
 }
 
+
+
+function extend(state,queue,map,idx,parse){
+	
+
+
+	for(var i=0; i < 9; i++)
+		for(var j=0; j < 3; j++)
+		{
+			var s=[[],[]];
+			for(var k=0; k < 8; k++){
+				s[0][k]=state[0][k];
+				s[1][k]=state[1][k];
+			}
+			operate_state(i,j,s);
+			if(parse == 1){
+				if(map[s] == null || (map[s]&(idx+1)) == 0){
+					map[s]|=idx+1;
+					queue.enqueue(s);
+					paths[idx][s]=paths[idx][state]+(i*3+j)+" ";
+				}
+			}
+			else if(parse == 0){
+				if(map[s[1]]==null || (map[s[1]]&(idx+1)) == 0){
+					map[s[1]]|=idx+1;
+					paths[idx][s]=paths[idx][state]+(i*3+j)+" ";
+					queue.enqueue(s);
+				}
+			}
+		}	
+
+}
+
+function inverse(path){
+	var strs=path.split(" ");
+	var result="";
+	for(var i=strs.length-2; i >= 0;i--){
+		var op=parseInt(strs[i]);
+		var face=Math.floor(op/3);
+		var angle=op%3;
+		angle=2-angle;
+		result+=(face*3+angle)+" ";
+	}
+	return result;
+}
+var path1="";
+var path2="";
+
+var Qu={};
+Qu.Queue=function(len){
+	this.capacity=len;
+	this.list=new Array();
+};
+Qu.Queue.prototype.front=function(){
+	return this.list[0];
+}
+Qu.Queue.prototype.enqueue=function(data){
+	if(data == null) return;
+	if(this.list.length >= this.capacity){
+		this.list.remove(0);
+	}
+	this.list.push(data);
+};
+
+Qu.Queue.prototype.dequeue=function(){
+	if(this.list == null) return;
+	this.list.remove(0);
+}
+Qu.Queue.prototype.size=function(){
+	if(this == null) return;
+	return this.list.length;
+};
+Qu.Queue.prototype.isEmpty = function () {
+
+    if (this == null|this.list==null) return false;
+
+    return this.list.length>0;
+
+};
+Qu.Queue.prototype.clear=function(){
+	while(this.list != null && this.list.length > 0)
+		this.list.remove(0);
+}
+//对象数组扩展remove
+Array.prototype.remove = function(dx) {
+    if (isNaN(dx) || dx > this.length) {
+        return false;
+    }
+    for (var i = 0, n = 0; i < this.length; i++) {
+        if (this[i] != this[dx]) {
+            this[n++] = this[i]
+        }
+    }
+    this.length -= 1
+}
+
+//by zhaoxin
+var queue=[,];
+var map=new Object();
+var paths=[new Object(),new Object()];
+var path1="";
+var path2="";
+function dbfs(){
+    for(var k in map){
+        delete (map[k]);
+    }
+    if(queue[0] == null)
+    	queue[0]=new Qu.Queue(20000);
+    if(queue[1] == null)
+    	queue[1]=new Qu.Queue(20000);
+
+
+    //map[init]=0;
+    //map[goal]=1;
+    var parse=1;
+    var oldparse=0;
+    while(parse<2){
+    	for(var k in map){
+        	delete (map[k]);
+    	}
+    	for(var k in paths[0]){
+        	delete (paths[0][k]);
+    	}
+    	for(var k in paths[1]){
+        	delete (paths[1][k]);
+    	}
+    	if(queue[0] == null)
+    		queue[0]=new Qu.Queue(10000);
+    	else{
+    		queue[0].clear();
+    	}
+    	if(queue[1] == null)
+    		queue[1]=new Qu.Queue(10000);
+    	else{
+    		queue[1].clear();
+    	}
+    	var init=[position,rotation];
+    	var goal=[goal_position,goal_rotation];
+    	queue[0].enqueue(init);
+    	queue[1].enqueue(goal);
+    	paths[0][init]="";
+    	paths[1][goal]="";
+    	if(parse==0){
+    		map[init[1]]=1;
+    		map[goal[1]]=2;
+    	}
+    	else{
+    		map[init]=1;
+    		map[goal]=2;
+    	}
+
+	    var idx=0,step=0;
+	    oldparse=parse;
+	    while(!queue[0].size() == 0 || !queue[1].size() == 0){
+	    	idx=step&1;
+	    	var cnt=queue[idx].size();
+	    	while(cnt > 0){
+	    		cnt--;
+
+	    		var cur=queue[idx].front();
+		    	queue[idx].dequeue();
+	    		if(parse == 1){
+		    		if(map[cur]!=null && (map[cur]&3) == 3){
+		    			//alert(paths[0][cur]);
+		    			//alert(inverse(paths[1][cur]));
+		    			path2=paths[0][cur]+inverse(paths[1][cur]);
+		    			if(path1[0]=='0')
+		    			{
+		    				path2=path1.substring(2)+path2;
+		    			}
+		    			else if(path1[1] == '1'){
+		    				path2=path2+inverse(path1.substring(2));
+		    			}
+
+		    			var strs=path2.split(" ");
+		    			var result=[];
+		    			for(var i=0; i < strs.length-1;i++){
+		    				result.push([Math.floor(parseInt(strs[i])/3),parseInt(strs[i])%3])
+		    			}
+		    			//alert(step);
+		    			return result;
+		    		}
+
+		    		extend(cur,queue[idx],map,idx,parse);
+	    		}
+	    		else if(parse == 0){
+		    		if(map[cur[1]]!=null && (map[cur[1]]&3) == 3){
+		    			if(idx == 0){
+		    				for(var i=0; i < 8; i++){
+		    					position[i]=cur[0][i];
+		    					rotation[i]=cur[1][i];
+		    				}
+		    				path1="0 "+paths[0][cur];
+		    			}
+		    			else{
+		    				for(var i=0; i < 8; i++){
+		    					goal_position[i]=cur[0][i];
+		    					goal_rotation[i]=cur[1][i];
+		    				}
+		    				path1="1 "+paths[1][cur];
+		    			}
+		    			//alert(path1);
+		    			//realpath+=paths[0][cur];
+		    			//alert(paths[1][cur]);
+		    			parse++;
+		    			break;
+		    		}
+		    		extend(cur,queue[idx],map,idx,parse);
+	    		}
+
+	    	}
+	    	if(parse > oldparse){
+	    		break;
+	    	}
+	    	step++;
+	    	//if(step > 10)
+	    		//break;
+	    }
+	    if(parse == oldparse)
+	    	parse++;
+	}
+    alert("not found");
+    //return false;
+}
+
+
 random_generate();
 recover();
 
@@ -431,6 +678,7 @@ return {
 	get_face: get_face,
 	operate: operate,
 	random_generate: random_generate,
+	dbfs:dbfs,
 	save_state: save_state,
 	load_state: load_state,
 	recover: recover,
