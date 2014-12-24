@@ -358,10 +358,10 @@
 			return rot;
 		}
 
-		function solve() {
+		function solve(func) {
 //			rubik.random_generate();
 			var state = rubik.save_state();
-			var result = rubik.recover();
+			var result = func();
 			
 			console.log(result.toString());
 //return;
@@ -451,10 +451,10 @@
 		</tr>
 		</table>
 		<br/>
-		<a href="javascript:;" onclick="rubik.random_generate();gl.scene.needRepaint=true;">Random A Cube</a>
+		<a href="javascript:;" onclick="rubik.random_generate();gl.scene.needRepaint=true;">Randomize A Cube</a>
 		<br/>
 		<br/>
-		<a href="javascript:;" onclick="solve()">Solve Cube</a>
+		<a href="javascript:;" onclick="solve(rubik.recover)">Solve Cube</a>
 		<br/>
 		<br/>
 		<a href="javascript:;" onclick="gl.scene.addAnimation(30)">Reset View</a>
