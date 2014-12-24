@@ -1,0 +1,458 @@
+<html>
+<head>
+	<title>Rubik Cube</title>
+	<script type="text/vsh" id="drawv">
+		attribute vec3 position;
+		attribute vec3 normal;
+		attribute vec2 textureCoord;
+
+		uniform mat4 tMatrix;
+		uniform mat4 pMatrix;
+
+		varying vec3 vNormal;
+		varying vec2 vTextureCoord;
+		varying vec4 vPosition;
+
+		void main(void) {
+			gl_Position = pMatrix * tMatrix * vec4(position, 1.0);
+			
+			vec4 zero4 = tMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+			vec4 normal4 = tMatrix * vec4(normal, 1.0);
+			
+			vec3 zero3 = zero4.xyz / zero4.w;
+			vec3 normal3 = normal4.xyz / normal4.w;
+			
+			vNormal = normalize(normal3 - zero3);
+
+			vTextureCoord = textureCoord;
+			
+			vPosition = gl_Position;
+		}
+	</script>
+	<script type="text/fsh" id="drawf">
+		precision mediump float;
+
+		uniform sampler2D texture;
+		uniform sampler2D highlightTexture;
+
+		uniform vec3 backColor;
+
+		varying vec3 vNormal;
+		varying vec2 vTextureCoord;
+		varying vec4 vPosition;
+
+		void main(void) {
+			vec4 color = texture2D(texture, vTextureCoord.st);
+			vec3 normal = normalize(vNormal);
+			vec3 light = normalize(vec3(-1, 1.732, 1));
+			
+			float lightWeight = dot(normal, light);
+			if(lightWeight < 0.0)
+				lightWeight = 0.0;
+			
+			float highlight = texture2D(highlightTexture, vTextureCoord.st).x;
+			float highlightLevel = dot(normal, normalize(light + normalize(-vPosition.xyz)));
+			
+			highlightLevel = pow(highlightLevel, 80.0*highlight) * (1.0-highlight);
+			if(highlightLevel < 0.0)
+				highlightLevel = 0.0;
+
+			lightWeight = 0.5 + 0.5 * lightWeight;
+
+			gl_FragColor = vec4(backColor * color.rgb * lightWeight + (highlightLevel * 3.0), color.a);
+		}
+	</script>
+	<script type="text/javascript" src="jquery-1.10.2.min.js"></script>
+	<script type="text/javascript" src="Oak3D_v_0_5_9.js"></script>
+	<script type="text/javascript" src="gllib.js"></script>
+	<script type="text/javascript" src="cube.js"></script>
+	<script type="text/javascript" src="rubik.js"></script>
+	<script type="text/javascript">
+		var gl;
+		var cubecolor = [
+			{r:1, g:1, b:0},
+			{r:1, g:1, b:1},
+			{r:0.3, g:0.3, b:1},
+			{r:0, g:0.6, b:0},
+			{r:1, g:0, b:0},
+			{r:1, g:0.5, b:0},
+			{r:0, g:0, b:0}
+		];
+		var faceMap = [
+			rubik.B_FACE,
+			rubik.L_FACE,
+			rubik.F_FACE,
+			rubik.R_FACE,
+			rubik.U_FACE,
+			rubik.D_FACE
+		];
+		var facePos = [
+			[ 2,  3, -1, -1, -1,  3],
+			[ 3, -1, -1,  2, -1,  2],
+			[-1,  2,  3, -1, -1,  0],
+			[-1, -1,  2,  3, -1,  1],
+			[ 1,  0, -1, -1,  0, -1],
+			[ 0, -1, -1,  1,  1, -1],
+			[-1,  1,  0, -1,  3, -1],
+			[-1, -1,  1,  0,  2, -1]
+		];
+
+		function load() {
+			gl = loadGl('canvas');
+
+			gl.enable(gl.DEPTH_TEST);
+			gl.depthFunc(gl.LESS);
+			
+			gl.enable(gl.BLEND);
+			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+			gl.enable(gl.CULL_FACE);
+			gl.cullFace(gl.BACK);
+			
+			var done = 0;
+
+			loadShader(gl, "#drawv", "#drawf", function(sp) {
+				gl.dsp = sp;
+
+				gl.linkProgram(sp);
+				if (!gl.getProgramParameter(sp, gl.LINK_STATUS)) {
+					alert("Could not link shaders: \n" + gl.getProgramInfoLog(sp));
+					return;
+				}
+				
+				sp.position = gl.getAttribLocation(sp, "position");
+				sp.textureCoord = gl.getAttribLocation(sp, "textureCoord");
+				sp.normal = gl.getAttribLocation(sp, "normal");
+				
+				sp.tMatrix = gl.getUniformLocation(sp, "tMatrix");
+				sp.pMatrix = gl.getUniformLocation(sp, "pMatrix");
+				sp.texture = gl.getUniformLocation(sp, "texture");
+				sp.highlightTexture = gl.getUniformLocation(sp, "highlightTexture");
+				sp.backColor = gl.getUniformLocation(sp, "backColor");
+				
+				done |= 1;
+				doneThen(done, 3, gl);
+			});
+			
+			var themodel = cube;
+			
+			loadModel(gl, themodel, function(lm) {
+				gl.model = lm;
+
+				done |= 2;
+				doneThen(done, 3, gl);
+			});
+
+		}
+		
+		function doneThen(done, max, gl) {
+			if(done != max)
+				return;
+			
+			var scene = {};
+			var rot = rotateController("canvas");
+			
+			rot.x = 30;
+			rot.y = -20;
+			
+			scene.animationQueue = [];
+			scene.animationType = 0;
+			scene.animationProcess = 0;
+			scene.animationProcessAll = 10;
+			
+			scene.addAnimation = function(type, cb) {
+				scene.animationQueue.push({type:type, callback:cb});
+				if(scene.animationType == 0) {
+					scene.popAnimation();
+				}
+			};
+			
+			scene.popAnimation = function() {
+				scene.animationProcess = 0;
+				scene.animationType = 0;
+				while(scene.animationType == 0 && scene.animationQueue.length > 0) {
+					var item = scene.animationQueue.shift();
+					scene.animationType = item.type;
+					scene.animationCallback = item.callback;
+				}
+			}
+				
+			gl.scene = scene;
+			
+			setInterval(function() {
+				scene.pMat = okMat4Proj(35, 1, 100, 200).toArray();
+				
+				var process = 90 * scene.animationProcess / scene.animationProcessAll;
+				
+				if(scene.animationType == 30) {
+					var k = (scene.animationProcess + 1) / scene.animationProcessAll;
+					rot.x = rot.x * (1 - k) + 30 * k;
+					rot.y = rot.y * (1 - k) - 20 * k;
+				}
+				
+				var trans = okMat4Trans(0, 0, -128);
+				var rt1 = okMat4RotX(rot.x).rotY(OAK.SPACE_LOCAL, rot.y);
+
+				for(var x=-8; x<=8; x+=16) {
+					for(var y=-8; y<=8; y+=16) {
+						for(var z=-8; z<=8; z+=16) {
+							var rt1cpy = rt1.clone();
+							
+							switch(scene.animationType) {
+								case 1:
+								case 2:
+									if(x > 0) {
+										rt1cpy.rotX(OAK.SPACE_LOCAL, (scene.animationType*2-3) * process, true);
+									}
+									break;
+								case 3:
+								case 4:
+									if(x < 0) {
+										rt1cpy.rotX(OAK.SPACE_LOCAL, -(scene.animationType*2-7) * process, true);
+									}
+									break;
+								case 5:
+								case 6:
+									if(y > 0) {
+										rt1cpy.rotY(OAK.SPACE_LOCAL, (scene.animationType*2-11) * process, true);
+									}
+									break;
+								case 7:
+								case 8:
+									if(y < 0) {
+										rt1cpy.rotY(OAK.SPACE_LOCAL, -(scene.animationType*2-15) * process, true);
+									}
+									break;
+								case 9:
+								case 10:
+									if(z > 0) {
+										rt1cpy.rotZ(OAK.SPACE_LOCAL, (scene.animationType*2-19) * process, true);
+									}
+									break;
+								case 11:
+								case 12:
+									if(z < 0) {
+										rt1cpy.rotZ(OAK.SPACE_LOCAL, -(scene.animationType*2-23) * process, true);
+									}
+									break;
+								case 13:
+								case 14:
+									rt1cpy.rotX(OAK.SPACE_LOCAL, (scene.animationType*2-27) * process, true);
+									break;
+								case 15:
+								case 16:
+									rt1cpy.rotY(OAK.SPACE_LOCAL, (scene.animationType*2-31) * process, true);
+									break;
+								case 17:
+								case 18:
+									rt1cpy.rotZ(OAK.SPACE_LOCAL, (scene.animationType*2-35) * process, true);
+									break;
+							}
+								
+							scene.rtMat = rt1cpy.toArray();
+							scene.tMat = okMat4Mul(trans, rt1cpy);
+							scene.tMat.translate(OAK.SPACE_LOCAL, x, y, z, true);
+							scene.tMat = scene.tMat.toArray();
+							draw(scene, gl, (x>0?1:0) + (y>0?4:0) + (z>0?2:0));
+						}
+					}
+				}
+				if(scene.animationType != 0) {
+					scene.animationProcess++;
+					if(scene.animationProcess >= scene.animationProcessAll) {
+						if(scene.animationCallback) {
+							scene.animationCallback();
+						}
+						scene.popAnimation();
+					}
+				}
+			}, 30);
+		}
+		
+		function draw(scene, gl, cubeid) {
+			var sp2 = gl.dsp;
+			gl.useProgram(sp2);
+			var i = 0;
+
+			drawModel(gl, gl.model, {
+				position: sp2.position,
+				normal: sp2.normal,
+				textureCoord: sp2.textureCoord,
+				texture: sp2.texture,
+				otherActions: function(gl, texture, polyhedron) {
+					var sp = gl.dsp;
+					var color;
+					
+					if(i >= 6) {
+						color = cubecolor[6];
+					} else {
+						var fpos = facePos[cubeid][i];
+						if(fpos < 0) {
+							color = cubecolor[6];
+						} else {
+							color = cubecolor[rubik.get_face(faceMap[i])[fpos]];
+						}
+					}
+					
+					gl.uniform3f(sp.backColor, color.r, color.g, color.b);
+					gl.uniformMatrix4fv(sp.pMatrix, false, scene.pMat);
+					gl.uniformMatrix4fv(sp.tMatrix, false, scene.tMat);
+					
+					gl.activeTexture(gl.TEXTURE1);
+					gl.bindTexture(gl.TEXTURE_2D, gl.model.textures[1]);
+					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+					gl.uniform1i(sp.highlightTexture, 1);
+					i++;
+				}
+			});
+		}
+
+		function rotateController(id) {
+
+			var rot = {x: 0.0, y: 0.0, isMouseDown: false};
+
+			var mouseDownPosX;
+			var mouseDownPosY;
+			
+			var canvas = $('#' + id);
+			
+			$("body").get(0).onselectstart = function() {
+				return !rot.isMouseDown;
+			}
+
+			canvas.mousedown(function(e){
+				rot.isMouseDown = true;
+				mouseDownPosX = e.pageX;
+				mouseDownPosY = e.pageY;
+			});
+			
+			$('html').mousemove(function(e){
+				if(rot.isMouseDown) {
+					var diffX = e.pageX - mouseDownPosX;
+					var diffY = e.pageY - mouseDownPosY;
+					rot.y += diffX / 2.0;
+					rot.x += diffY / 2.0;
+					mouseDownPosX = e.pageX;
+					mouseDownPosY = e.pageY;
+				}
+			});
+			
+			$('html').mouseup(function(e){
+				rot.isMouseDown = false;
+			});
+			
+			return rot;
+		}
+
+		function solve() {
+//			rubik.random_generate();
+			var state = rubik.save_state();
+			var result = rubik.recover();
+			
+			console.log(result.toString());
+//return;
+			rubik.load_state(state);
+			
+			var baseMap = [0, 2, 4, 5, 3, 2, 6, 7, 8];
+			for(var i=0; i<result.length; i++) {
+				var item = result[i];
+				var id = baseMap[item[0]] * 2 + 1;
+				if(item[1] == rubik.COUNTER_CLOCK_90) {
+					id++;
+				}
+				addAnimation(id);
+				if(item[1] == rubik.CLOCK_180) {
+					addAnimation(id);
+				}
+			}
+		}
+		
+		var operates = [
+			0,
+			rubik.R_FACE, rubik.R_FACE,
+			rubik.L_FACE, rubik.L_FACE,
+			rubik.U_FACE, rubik.U_FACE,
+			rubik.D_FACE, rubik.D_FACE,
+			rubik.F_FACE, rubik.F_FACE,
+			rubik.B_FACE, rubik.B_FACE,
+			rubik.RL_FACE, rubik.RL_FACE,
+			rubik.UD_FACE, rubik.UD_FACE,
+			rubik.FB_FACE, rubik.FB_FACE
+		];
+		
+		var directions = [
+			0,
+			rubik.CLOCK_90, rubik.COUNTER_CLOCK_90,
+			rubik.CLOCK_90, rubik.COUNTER_CLOCK_90,
+			rubik.CLOCK_90, rubik.COUNTER_CLOCK_90,
+			rubik.CLOCK_90, rubik.COUNTER_CLOCK_90,
+			rubik.CLOCK_90, rubik.COUNTER_CLOCK_90,
+			rubik.CLOCK_90, rubik.COUNTER_CLOCK_90,
+			rubik.CLOCK_90, rubik.COUNTER_CLOCK_90,
+			rubik.CLOCK_90, rubik.COUNTER_CLOCK_90,
+			rubik.CLOCK_90, rubik.COUNTER_CLOCK_90
+		];
+		
+		function addAnimation(i) {
+			gl.scene.addAnimation(i,function(){rubik.operate(operates[i], directions[i])});
+		}
+
+
+	</script>
+</head>
+<body>
+	<h1>Rubik Cube</h1>
+	<canvas id="canvas" width="512" height="512" style="border:1px solid ccc;float:left;margin-right:30px">
+		Your browser doesn't support WelGL, or you need to enable it.
+	</canvas>
+	<div>
+		<table>
+		<tr>
+		<td><a href="javascript:;" onclick="addAnimation(13)">X Axis Clockwise</a></td>
+		<td><a href="javascript:;" onclick="addAnimation(14)">X Axis Counterclockwise</a></td>
+		</tr><tr>
+		<td><a href="javascript:;" onclick="addAnimation(1)">X+ Axis Clockwise</a></td>
+		<td><a href="javascript:;" onclick="addAnimation(2)">X+ Axis Counterclockwise</a></td>
+		</tr><tr>
+		<td><a href="javascript:;" onclick="addAnimation(3)">X- Axis Clockwise</a></td>
+		<td><a href="javascript:;" onclick="addAnimation(4)">X- Axis Counterclockwise</a></td>
+		</tr><tr>
+		<td><a href="javascript:;" onclick="addAnimation(15)">Y Axis Clockwise</a></td>
+		<td><a href="javascript:;" onclick="addAnimation(16)">Y Axis Counterclockwise</a></td>
+		</tr><tr>
+		<td><a href="javascript:;" onclick="addAnimation(5)">Y+ Axis Clockwise</a></td>
+		<td><a href="javascript:;" onclick="addAnimation(6)">Y+ Axis Counterclockwise</a></td>
+		</tr><tr>
+		<td><a href="javascript:;" onclick="addAnimation(7)">Y- Axis Clockwise</a></td>
+		<td><a href="javascript:;" onclick="addAnimation(8)">Y- Axis Counterclockwise</a></td>
+		</tr><tr>
+		<td><a href="javascript:;" onclick="addAnimation(17)">Z Axis Clockwise</a></td>
+		<td><a href="javascript:;" onclick="addAnimation(18)">Z Axis Counterclockwise</a></td>
+		</tr><tr>
+		<td><a href="javascript:;" onclick="addAnimation(9)">Z+ Axis Clockwise</a></td>
+		<td><a href="javascript:;" onclick="addAnimation(10)">Z+ Axis Counterclockwise</a></td>
+		</tr><tr>
+		<td><a href="javascript:;" onclick="addAnimation(11)">Z- Axis Clockwise</a></td>
+		<td><a href="javascript:;" onclick="addAnimation(12)">Z- Axis Counterclockwise</a></td>
+		</tr>
+		</table>
+		<br/>
+		<a href="javascript:;" onclick="rubik.random_generate()">Random A Cube</a>
+		<br/>
+		<br/>
+		<a href="javascript:;" onclick="solve()">Solve Cube</a>
+		<br/>
+		<br/>
+		<a href="javascript:;" onclick="gl.scene.addAnimation(30)">Reset View</a>
+	</div>
+	<script type="text/javascript">
+		try{load();}catch(e){alert(e.message);}
+	</script>
+	<hr />
+	<p>Author: Chaos & QK</p>
+	<p>E-Mail: <a href="mailto:herbix@163.com">herbix@163.com</a></p>
+	<p>E-Mail: <a href="mailto:qiank10@gmail.com">qiank10@gmail.com</a></p>
+	<script type="text/javascript">var cnzz_protocol = (("https:" == document.location.protocol) ? " https://" : " http://");document.write(unescape("%3Cspan id='cnzz_stat_icon_1000435278'%3E%3C/span%3E%3Cscript src='" + cnzz_protocol + "v1.cnzz.com/z_stat.php%3Fid%3D1000435278%26show%3Dpic' type='text/javascript'%3E%3C/script%3E"));</script>
+</body>
+</html>
