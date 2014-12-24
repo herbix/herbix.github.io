@@ -399,6 +399,10 @@ function recover(){
 				result.splice(i, 2, [item1[0], 2]);
 				i--;
 			}
+			if(item1[1] + item2[1] == 0) {
+				result.splice(i, 2, [item1[0], 1]);
+				i--;
+			}
 		}
 	}
 
