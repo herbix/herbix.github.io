@@ -9,7 +9,6 @@ function loadGl(id) {
 		"mipmaps" : gl.LINEAR_MIPMAP_NEAREST
 	};
 
-	gl.clearColor(0.0, 0.0, 0.0, 1.0);
 	return gl;
 }
 
