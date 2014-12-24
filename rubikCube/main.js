@@ -194,13 +194,15 @@ function doneThen(done, max, gl) {
 			while(scene.rotDegree < -360) {
 				scene.rotDegree += 360;
 			}
-			while(scene.rotDegree > 45) {
-				scene.rotDegree -= 90;
-				rubik.operate(operates[scene.rotType], directions[scene.rotType]);
-			}
-			while(scene.rotDegree < -45) {
-				scene.rotDegree += 90;
-				rubik.operate(operates[scene.rotType], 2 - directions[scene.rotType]);
+			if(scene.animationType == 0) {
+				while(scene.rotDegree > 45) {
+					scene.rotDegree -= 90;
+					rubik.operate(operates[scene.rotType], directions[scene.rotType]);
+				}
+				while(scene.rotDegree < -45) {
+					scene.rotDegree += 90;
+					rubik.operate(operates[scene.rotType], 2 - directions[scene.rotType]);
+				}
 			}
 			scene.rotDegree *= 0.7;
 			if(scene.rotDegree < 1e-4 && scene.rotDegree > -1e-4) {
