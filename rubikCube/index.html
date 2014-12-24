@@ -160,6 +160,8 @@
 			scene.animationProcess = 0;
 			scene.animationProcessAll = 10;
 			
+			scene.needRepaint = true;
+			
 			scene.addAnimation = function(type, cb) {
 				scene.animationQueue.push({type:type, callback:cb});
 				if(scene.animationType == 0) {
@@ -168,6 +170,7 @@
 			};
 			
 			scene.popAnimation = function() {
+				scene.needRepaint = true;
 				scene.animationProcess = 0;
 				scene.animationType = 0;
 				while(scene.animationType == 0 && scene.animationQueue.length > 0) {
@@ -180,6 +183,14 @@
 			gl.scene = scene;
 			
 			setInterval(function() {
+				scene.needRepaint = scene.needRepaint || scene.animationType != 0 || rot.changed;
+				if(scene.needRepaint) {
+					rot.changed = false;
+					scene.needRepaint = false;
+				} else {
+					return;
+				}
+			
 				scene.pMat = okMat4Proj(35, 1, 100, 200).toArray();
 				
 				var process = 90 * scene.animationProcess / scene.animationProcessAll;
@@ -253,6 +264,7 @@
 							scene.tMat = okMat4Mul(trans, rt1cpy);
 							scene.tMat.translate(OAK.SPACE_LOCAL, x, y, z, true);
 							scene.tMat = scene.tMat.toArray();
+							
 							draw(scene, gl, (x>0?1:0) + (y>0?4:0) + (z>0?2:0));
 						}
 					}
@@ -310,7 +322,7 @@
 
 		function rotateController(id) {
 
-			var rot = {x: 0.0, y: 0.0, isMouseDown: false};
+			var rot = {x: 0.0, y: 0.0, isMouseDown: false, changed: false};
 
 			var mouseDownPosX;
 			var mouseDownPosY;
@@ -335,6 +347,7 @@
 					rot.x += diffY / 2.0;
 					mouseDownPosX = e.pageX;
 					mouseDownPosY = e.pageY;
+					rot.changed = true;
 				}
 			});
 			
@@ -438,7 +451,7 @@
 		</tr>
 		</table>
 		<br/>
-		<a href="javascript:;" onclick="rubik.random_generate()">Random A Cube</a>
+		<a href="javascript:;" onclick="rubik.random_generate();gl.scene.needRepaint=true;">Random A Cube</a>
 		<br/>
 		<br/>
 		<a href="javascript:;" onclick="solve()">Solve Cube</a>
@@ -449,10 +462,10 @@
 	<script type="text/javascript">
 		try{load();}catch(e){alert(e.message);}
 	</script>
-	<hr />
+	<!--<hr />
 	<p>Author: Chaos & QK</p>
 	<p>E-Mail: <a href="mailto:herbix@163.com">herbix@163.com</a></p>
 	<p>E-Mail: <a href="mailto:qiank10@gmail.com">qiank10@gmail.com</a></p>
-	<script type="text/javascript">var cnzz_protocol = (("https:" == document.location.protocol) ? " https://" : " http://");document.write(unescape("%3Cspan id='cnzz_stat_icon_1000435278'%3E%3C/span%3E%3Cscript src='" + cnzz_protocol + "v1.cnzz.com/z_stat.php%3Fid%3D1000435278%26show%3Dpic' type='text/javascript'%3E%3C/script%3E"));</script>
+	<script type="text/javascript">var cnzz_protocol = (("https:" == document.location.protocol) ? " https://" : " http://");document.write(unescape("%3Cspan id='cnzz_stat_icon_1000435278'%3E%3C/span%3E%3Cscript src='" + cnzz_protocol + "v1.cnzz.com/z_stat.php%3Fid%3D1000435278%26show%3Dpic' type='text/javascript'%3E%3C/script%3E"));</script>-->
 </body>
 </html>
