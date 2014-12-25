@@ -146,18 +146,18 @@ function doneThen(done, max, gl) {
 
 		if(scene.selection.cubeid < 0) {
 			scene.rotX += rot.x;
-			scene.rotY += rot.y;
+			scene.rotY += scene.rotX < 90 ? rot.y : -rot.y;
 			while(scene.rotY < -45) {
 				scene.rotY += 360;
 			}
 			while(scene.rotY > 360-45) {
 				scene.rotY -= 360;
 			}
-			if(scene.rotX > 90) {
-				scene.rotX = 90;
+			while(scene.rotX < -90) {
+				scene.rotX += 360;
 			}
-			if(scene.rotX < -90) {
-				scene.rotX = -90;
+			while(scene.rotX > 270) {
+				scene.rotX -= 360;
 			}
 			rot.x = 0;
 			rot.y = 0;
@@ -166,11 +166,23 @@ function doneThen(done, max, gl) {
 			if(scene.selection.face >= 4) {
 				if(scene.rotY < 45) {
 				} else if(scene.rotY < 135) {
-					type = [type[1], type[0] + (type[0]%2==0?-1:1)];
+					if(scene.selection.face == 4) {
+						type = [type[1], type[0] + (type[0]%2==0?-1:1)];
+					} else {
+						type = [type[1] + (type[1]%2==0?-1:1), type[0]];
+					}
 				} else if(scene.rotY < 225) {
 					type = [type[0] + (type[0]%2==0?-1:1), type[1] + (type[1]%2==0?-1:1)];
 				} else if(scene.rotY < 315) {
-					type = [type[1] + (type[1]%2==0?-1:1), type[0]];
+					if(scene.selection.face == 5) {
+						type = [type[1], type[0] + (type[0]%2==0?-1:1)];
+					} else {
+						type = [type[1] + (type[1]%2==0?-1:1), type[0]];
+					}
+				}
+			} else {
+				if(scene.rotX > 90) {
+					type = [type[0] + (type[0]%2==0?-1:1), type[1] + (type[1]%2==0?-1:1)];
 				}
 			}
 			if(Math.abs(rot.x) < 20 && Math.abs(rot.y) < 20) {
